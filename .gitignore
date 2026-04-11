@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Cobertura y reportes
+coverage_*.xml
+htmlcov/
+.sonar/
+
+# Datos locales (generados en tiempo de ejecución)
+subsistema_a_planta/data/
+*.json
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
