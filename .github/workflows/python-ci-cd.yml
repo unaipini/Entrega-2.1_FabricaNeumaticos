@@ -1,0 +1,229 @@
+name: CI — Control de Calidad de Neumáticos
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "hotfix/**"
+  pull_request:
+    branches:
+      - main
+
+env:
+  PYTHON_VERSION: "3.11"
+
+#  1: Instalar dependencias y verificar sintaxis
+jobs:
+  build:
+    name: "BUILD — Instalar dependencias"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout del repositorio"
+        uses: actions/checkout@v4
+
+      - name: "Configurar Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: "Instalar dependencias — Subsistema A"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r subsistema_a_planta/requirements.txt
+
+      - name: "Instalar dependencias — Subsistema B"
+        run: |
+          pip install -r subsistema_b_calidad/requirements.txt
+
+      - name: "Instalar herramientas adicionales (coverage + sonar)"
+        run: |
+          pip install pytest-cov coverage
+
+      - name: "Verificar importaciones (smoke test de sintaxis)"
+        run: |
+          cd subsistema_a_planta && python -c "
+          from modelos.neumatico import Neumatico
+          from fabrica.fabrica_neumatico import FabricaNeumaticoAleatorio
+          from cliente.cliente_api import ClienteCalidad
+          print('Subsistema A — imports OK')
+          "
+          cd ../subsistema_b_calidad && python -c "
+          from modelos.neumatico import Neumatico
+          from estrategias.reglas_concretas import ReglaRadio, ReglaPeso, ReglaHuella
+          from servicio.inspector import InspectorCalidad
+          from api.rutas import api_bp
+          print('Subsistema B — imports OK')
+          "
+
+# 2: TEST — Pruebas Unitarias y de Componente
+  test-unitarios-componente:
+    name: "TEST — Unitarios y Componente"
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: "Checkout del repositorio"
+        uses: actions/checkout@v4
+
+      - name: "Configurar Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: "Instalar dependencias"
+        run: |
+          pip install -r subsistema_a_planta/requirements.txt
+          pip install -r subsistema_b_calidad/requirements.txt
+          pip install pytest-cov coverage
+
+      # ── Subsistema A — Unitarios y Componente ──
+      - name: "Pruebas Unitarias — Subsistema A (Factory Method)"
+        working-directory: subsistema_a_planta
+        run: |
+          python -m pytest tests/test_fabrica.py \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=xml:coverage_a_unit.xml \
+            --cov-report=term-missing \
+            -p no:warnings
+
+      - name: "Pruebas de Componente — Subsistema A (Mock API)"
+        working-directory: subsistema_a_planta
+        run: |
+          python -m pytest tests/test_cliente_componente.py \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-append \
+            --cov-report=xml:coverage_a_comp.xml \
+            -p no:warnings
+
+      # ── Subsistema B — Unitarios y Componente ──
+      - name: "Pruebas Unitarias — Subsistema B (Strategy Pattern)"
+        working-directory: subsistema_b_calidad
+        run: |
+          python -m pytest tests/test_estrategias.py tests/test_inspector.py \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=xml:coverage_b_unit.xml \
+            --cov-report=term-missing \
+            -p no:warnings
+
+      - name: "Pruebas de Componente — Subsistema B (API Endpoints)"
+        working-directory: subsistema_b_calidad
+        run: |
+          python -m pytest tests/test_api_componente.py \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-append \
+            --cov-report=xml:coverage_b_comp.xml \
+            -p no:warnings
+
+      # ── Subir artefactos de cobertura ──
+      - name: "Subir reportes de cobertura (artefactos)"
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            subsistema_a_planta/coverage_a_unit.xml
+            subsistema_a_planta/coverage_a_comp.xml
+            subsistema_b_calidad/coverage_b_unit.xml
+            subsistema_b_calidad/coverage_b_comp.xml
+          retention-days: 7
+
+# 3: TEST DE SISTEMA — Integración E2E
+  test-sistema:
+    name: "TEST — Sistema / Integración E2E"
+    runs-on: ubuntu-latest
+    needs: test-unitarios-componente
+
+    steps:
+      - name: "Checkout del repositorio"
+        uses: actions/checkout@v4
+
+      - name: "Configurar Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: "Instalar dependencias"
+        run: |
+          pip install -r subsistema_a_planta/requirements.txt
+          pip install -r subsistema_b_calidad/requirements.txt
+          pip install pytest pytest-cov pytest-timeout
+
+      - name: "Pruebas de Sistema — Flujo Completo E2E"
+        run: |
+          python -m pytest tests_sistema/test_integracion.py \
+            -v \
+            --tb=short \
+            -p no:warnings \
+            --timeout=30
+
+# 4: SONARQUBE — Análisis estático de calidad del código
+  sonarcloud:
+    name: "SONARCLOUD — Análisis de Calidad"
+    runs-on: ubuntu-latest
+    needs: test-sistema
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+
+    steps:
+      - name: "Checkout del repositorio (con historial completo para Sonar)"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # SonarCloud necesita historial completo para blame
+
+      - name: "Configurar Python ${{ env.PYTHON_VERSION }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: "Instalar dependencias"
+        run: |
+          pip install -r subsistema_a_planta/requirements.txt
+          pip install -r subsistema_b_calidad/requirements.txt
+          pip install pytest-cov coverage
+
+      - name: "Generar informe de cobertura combinado para SonarCloud"
+        run: |
+          # Subsistema A — cobertura completa
+          cd subsistema_a_planta
+          python -m pytest tests/ \
+            --cov=. \
+            --cov-report=xml:../coverage_a.xml \
+            -q -p no:warnings
+          cd ..
+
+          # Subsistema B — cobertura completa
+          cd subsistema_b_calidad
+          python -m pytest tests/ \
+            --cov=. \
+            --cov-report=xml:../coverage_b.xml \
+            -q -p no:warnings
+          cd ..
+
+      - name: "SonarCloud Scan"
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN:  ${{ secrets.SONAR_TOKEN }}
+        with:
+        # IMPORTANTE: Cambiar parametros según configuración deL proyecto en SonarCloud
+          args: >
+            -Dsonar.projectKey= 
+            -Dsonar.organization=${{ github.repository_owner }}
+            -Dsonar.sources=subsistema_a_planta,subsistema_b_calidad
+            -Dsonar.tests=subsistema_a_planta/tests,subsistema_b_calidad/tests,tests_sistema
+            -Dsonar.python.coverage.reportPaths=coverage_a.xml,coverage_b.xml
+            -Dsonar.python.version=${{ env.PYTHON_VERSION }}
+            -Dsonar.exclusions=**/__init__.py,**/data/**
+            -Dsonar.sourceEncoding=UTF-8
