@@ -51,7 +51,9 @@ def servidor_b():
     El hilo daemon muere automáticamente con el proceso al finalizar los tests.
     """
     resetear_inspector()
-    app = Flask(__name__)
+    
+    app = Flask(__name__)  # NOSONAR
+    
     app.register_blueprint(api_bp)
 
     hilo = threading.Thread(

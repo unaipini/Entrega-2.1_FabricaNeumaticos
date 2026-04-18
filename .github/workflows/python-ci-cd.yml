@@ -212,7 +212,7 @@ jobs:
           cd ..
 
       - name: "SonarCloud Scan"
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarcloud-github-action@eb211723266fe8ba13540cbb18c4b18c4c34a217
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:  ${{ secrets.SONAR_TOKEN }}
