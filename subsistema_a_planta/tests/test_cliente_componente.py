@@ -17,6 +17,7 @@ import tempfile
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import math
 
 from modelos.neumatico import Neumatico
 from cliente.cliente_api import ClienteCalidad
@@ -68,10 +69,12 @@ class TestClienteCalidadRed:
             cliente.enviar(neumatico_valido)
             _, kwargs = mock_post.call_args
             payload = kwargs["json"]
-            assert payload["id_neumatico"]          == "comp-test-001"
-            assert payload["radio_pulgadas"]        == 16.0
-            assert payload["peso_kg"]               == 9.5
-            assert payload["profundidad_huella_mm"] == 3.2
+
+            assert payload["id_neumatico"] == "comp-test-001"
+            
+            assert math.isclose(payload["radio_pulgadas"], 16.0)
+            assert math.isclose(payload["peso_kg"], 9.5)
+            assert math.isclose(payload["profundidad_huella_mm"], 3.2)
 
     def test_http_200_devuelve_resultado_aceptado(self, cliente, neumatico_valido):
         """HTTP 200 del servidor debe mapearse a resultado ACEPTADO."""

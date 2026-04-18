@@ -42,14 +42,14 @@ def main():
     args = parser.parse_args()
 
     app = crear_app()
+
     print(f"\n{'═'*55}")
-    print(f"  SUBSISTEMA B — SERVIDOR DE CALIDAD ACTIVO")
+    print("  SUBSISTEMA B — SERVIDOR DE CALIDAD ACTIVO")
     print(f"  URL: http://localhost:{args.port}/api/inspeccionar")
     print(f"  Stats: http://localhost:{args.port}/api/estadisticas")
     print(f"{'═'*55}\n")
 
-    app.run(host="0.0.0.0", port=args.port, debug=args.debug)
-
+    app.run(host="127.0.0.1", port=args.port, debug=args.debug)
 
 if __name__ == "__main__":
     main()

@@ -10,7 +10,7 @@ guarda el neumático en un archivo JSON local (offline-first).
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -59,16 +59,20 @@ class ClienteCalidad:
     def _guardar_local(self, neumatico: Neumatico) -> None:
         ARCHIVO_PENDIENTES.parent.mkdir(parents=True, exist_ok=True)
         registros = []
+        
         if ARCHIVO_PENDIENTES.exists():
             try:
-                registros = json.loads(ARCHIVO_PENDIENTES.read_text("utf-8"))
+                registros = json.loads(ARCHIVO_PENDIENTES.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 registros = []
+                
         registros.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "neumatico": neumatico.a_dict(),
         })
-        ARCHIVO_PENDIENTES.write_text(
-            json.dumps(registros, ensure_ascii=False, indent=2), "utf-8"
-        )
-        logger.info("Neumático %s guardado en %s", neumatico.id_neumatico, ARCHIVO_PENDIENTES)
+
+        ruta_segura = ARCHIVO_PENDIENTES.resolve()
+        with open(ruta_segura, "w", encoding="utf-8") as f:
+            json.dump(registros, f, ensure_ascii=False, indent=2)
+
+        logger.info("Neumático %s guardado en %s", neumatico.id_neumatico, ruta_segura)
