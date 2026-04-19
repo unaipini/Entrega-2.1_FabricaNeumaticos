@@ -15,6 +15,9 @@ if SUBSISTEMA_B not in sys.path:
     sys.path.insert(0, SUBSISTEMA_B)
 
 # Limpiar cache de 'modelos' para que se recargue desde B
-for key in list(sys.modules.keys()):
-    if key.startswith("modelos"):
-        del sys.modules[key]
+# 1. Buscamos primero las claves que queremos borrar y las guardamos en una lista
+claves_a_borrar = [key for key in sys.modules if key.startswith("modelos")]
+
+# 2. Borramos esas claves del diccionario original
+for key in claves_a_borrar:
+    del sys.modules[key]

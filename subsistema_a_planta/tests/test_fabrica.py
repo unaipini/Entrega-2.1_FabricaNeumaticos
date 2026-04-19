@@ -7,6 +7,7 @@ Cobertura:
   · FabricaNeumaticoAleatorio → tipo correcto, genera IDs únicos, delega bien.
   · Neumatico.a_dict()       → serialización correcta.
 """
+import math
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -152,7 +153,9 @@ class TestNeumaticoDominio:
     def test_a_dict_valores_correctos(self):
         n = Neumatico("abc", 15.9, 9.8, 2.1)
         d = n.a_dict()
-        assert d["id_neumatico"]          == "abc"
-        assert d["radio_pulgadas"]        == 15.9
-        assert d["peso_kg"]               == 9.8
-        assert d["profundidad_huella_mm"] == 2.1
+        
+        assert d["id_neumatico"] == "abc"
+        
+        assert math.isclose(d["radio_pulgadas"], 15.9)
+        assert math.isclose(d["peso_kg"], 9.8)
+        assert math.isclose(d["profundidad_huella_mm"], 2.1)
