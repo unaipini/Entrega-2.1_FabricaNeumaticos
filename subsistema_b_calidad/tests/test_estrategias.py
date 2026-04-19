@@ -28,12 +28,12 @@ from estrategias.reglas_concretas import ReglaRadio, ReglaPeso, ReglaHuella
 
 def _neumatico(**kwargs) -> Neumatico:
     """Crea un Neumatico válido de base y sobreescribe los campos indicados."""
-    base = dict(
-        id_neumatico="test-unit",
-        radio_pulgadas=16.0,
-        peso_kg=9.5,
-        profundidad_huella_mm=3.0,
-    )
+    base = {
+        "id_neumatico": "test-unit",
+        "radio_pulgadas": 16.0,
+        "peso_kg": 9.5,
+        "profundidad_huella_mm": 3.0,
+    }
     base.update(kwargs)
     return Neumatico(**base)
 

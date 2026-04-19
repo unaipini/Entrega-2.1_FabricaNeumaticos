@@ -36,7 +36,7 @@ class ClienteCalidad:
         """
         try:
             return self._enviar_por_red(neumatico)
-        except (requests.ConnectionError, requests.Timeout, requests.RequestException) as err:
+        except requests.RequestException as err:
             logger.warning("Sin red — guardando localmente. Causa: %s", err)
             self._guardar_local(neumatico)
             return {

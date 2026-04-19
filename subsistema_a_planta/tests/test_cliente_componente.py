@@ -57,7 +57,9 @@ class TestClienteCalidadRed:
         with patch("requests.post", return_value=mock_resp) as mock_post:
             cliente.enviar(neumatico_valido)
             mock_post.assert_called_once()
-            args, kwargs = mock_post.call_args
+            
+            args, _ = mock_post.call_args
+            
             assert args[0] == "http://mock-servidor-b/api/inspeccionar"
 
     def test_envia_payload_json_correcto(self, cliente, neumatico_valido):
